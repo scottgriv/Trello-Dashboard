@@ -52,3 +52,8 @@ testem.log
 *.DS_Store
 Thumbs.db
 Icon?
+._*
+
+# Local configuration file with sensitive credentials
+setup/config.js
+setup/colors.js

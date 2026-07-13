@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trello Dashboard</title>
+  <link rel="icon" href="assets/favicon.ico" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <main class="dashboard">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon">▥</div>
+        <div>
+          <h1 id="boardTitle">Trello</h1>
+          <p id="statusText">Dashboard ready</p>
+        </div>
+      </div>
+
+      <section class="refresh-card">
+        <button id="refreshNow" class="refresh-icon" type="button" title="Refresh dashboard" aria-label="Refresh dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div>
+          <span>Last Updated:</span>
+          <strong id="lastUpdated">—</strong>
+        </div>
+        <div>
+          <span>Next Refresh:</span>
+          <strong id="nextRefresh">—</strong>
+        </div>
+      </section>
+    </header>
+
+    <section id="setupWarning" class="setup-warning hidden">
+      <strong>Setup needed:</strong> open <code>setup/config.js</code> and paste your Trello token. Your API key and board ID are already filled in.
+    </section>
+
+    <section class="kpi-grid">
+          <article class="kpi red">
+            <div class="kpi-icon">▣</div>
+            <div>
+              <strong id="totalOpenCards">—</strong>
+              <span>Open Cards</span>
+            </div>
+          </article>
+          <article class="kpi green">
+            <div class="kpi-icon">✓</div>
+            <div>
+              <strong id="completedCards">—</strong>
+              <span>Completed Cards</span>
+            </div>
+          </article>
+          <article class="panel sidebar-kpi">
+            <div class="sidebar-kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 6h11M8 12h11M8 18h11" />
+                <circle cx="4" cy="6" r="1" />
+                <circle cx="4" cy="12" r="1" />
+                <circle cx="4" cy="18" r="1" />
+              </svg>
+            </div>
+            <div class="sidebar-kpi-content">
+              <h2 id="kpiListTitle">In Progress</h2>
+              <ol id="kpiListCards" class="sidebar-kpi-list">
+                <li>—</li>
+              </ol>
+            </div>
+          </article>
+          <article class="kpi blue">
+            <div class="kpi-icon">▤</div>
+            <div>
+              <strong id="dueTodayCards">—</strong>
+              <span>Due Today</span>
+            </div>
+          </article>
+          <article class="kpi purple">
+            <div class="kpi-icon">▦</div>
+            <div>
+              <strong id="dueThisWeekCards">—</strong>
+              <span>Due This Week</span>
+            </div>
+          </article>
+    </section>
+
+    <section class="main-grid">
+      <section class="content">
+        <section class="charts-grid">
+          <article class="panel panel-list">
+            <h2>Cards by List</h2>
+            <div class="chart-box"><canvas id="cardsByList"></canvas></div>
+          </article>
+
+          <article class="panel panel-labels">
+            <h2>Cards by Label</h2>
+            <div class="label-layout">
+              <div class="pie-wrap"><canvas id="cardsByLabel"></canvas></div>
+              <ul id="labelLegend" class="label-legend"></ul>
+            </div>
+          </article>
+
+          <article class="panel panel-members">
+            <h2>Cards by Member</h2>
+            <div class="chart-box"><canvas id="cardsByMember"></canvas></div>
+          </article>
+
+          <article class="panel panel-due">
+            <h2>Cards by Due Date</h2>
+            <div class="chart-box"><canvas id="cardsByDueDate"></canvas></div>
+          </article>
+        </section>
+      </section>
+
+      <aside class="weather-column">
+        <section class="weather-now">
+          <div class="weather-title">
+            <span id="weatherLocation">Local Weather</span>
+            <button id="refreshWeather" class="refresh-icon weather-refresh-icon" type="button" title="Refresh weather" aria-label="Refresh weather"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <div class="weather-hero">
+            <div id="weatherIcon" class="weather-icon">⛅</div>
+            <div>
+              <strong id="weatherTemp">—</strong>
+              <p id="weatherDesc">—</p>
+            </div>
+          </div>
+          <div class="weather-metrics">
+            <div><span>High / Low</span><strong id="weatherHighLow">—</strong></div>
+            <div><span>Rain</span><strong id="weatherRain">—</strong></div>
+            <div><span>Wind</span><strong id="weatherWind">—</strong></div>
+          </div>
+        </section>
+
+        <section class="forecast-panel">
+          <h2>3-Day Forecast</h2>
+          <div id="forecastList" class="forecast-list"></div>
+        </section>
+      </aside>
+    </section>
+
+    <footer>
+      <span class="footer-total">▣ Total Loaded Cards: <strong id="totalLoadedCards">—</strong></span>
+      <span class="github-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.02c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49.99.11-.77.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12 12 0 0 0 12 .5Z"/></svg><a href="https://github.com/scottgriv/trello-dashboard" target="_blank" rel="noopener noreferrer">View on GitHub</a></span>
+      <span><span class="dot"></span> Auto-refresh every <span id="refreshMinutes">5</span> minutes</span>
+    </footer>
+
+    <section class="below-fold">
+      <article class="panel panel-recent">
+        <h2>Recent Completed Cards</h2>
+        <ul id="recentCompletedList" class="card-list"></ul>
+      </article>
+
+      <article class="panel panel-upcoming">
+        <h2>Upcoming Due Cards</h2>
+        <ul id="upcomingList" class="card-list"></ul>
+      </article>
+    </section>
+
+
+  </main>
+
+  <script src="setup/config.js"></script>
+  <script src="setup/colors.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
