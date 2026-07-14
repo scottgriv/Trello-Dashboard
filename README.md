@@ -52,10 +52,13 @@ Transform your Trello board into a self-hosted Mission Control dashboard with re
 - Real-time Trello board analytics and insights
 - Interactive charts and visualizations
 - Weather information for your location
+    - Powered by Open-Meteo API
 - Responsive design for desktop, tablet, and mobile
 - Easy configuration (boards and colors) through `config.js` and `colors.js`
 - Self-hosted solution for privacy and control
-- Manual refresh and auto-refresh options for data updates
+- Manual refresh and auto-refresh options for data updates (board and weather)
+    - Refresh intervals can be set in `config.js` (default: 5 minutes for board, 30 minutes for weather)
+    - Manual refresh button available on the dashboard for immediate updates
 
 ## Background Story
 

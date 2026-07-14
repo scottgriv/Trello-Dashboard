@@ -141,7 +141,11 @@ function renderTrello(cards, lists, members) {
   const memberMap = Object.fromEntries(members.map(m => [m.id, m.fullName || m.username || "Unknown"]));
 
   const completedCards = cards.filter(card => card.dueComplete || isCompleteListName(listMap[card.idList]));
-  const activeCards = cards.filter(card => !card.dueComplete && !isCompleteListName(listMap[card.idList]));
+  const activeCards = cards.filter(card =>
+    !card.closed &&
+    !card.dueComplete &&
+    !isCompleteListName(listMap[card.idList])
+  );
 
   const dueToday = activeCards.filter(card => card.due && sameDay(new Date(card.due), now)).length;
   const dueThisWeek = activeCards.filter(card => {
@@ -168,8 +172,8 @@ function renderTrello(cards, lists, members) {
       const name = listMap[card.idList] || "Unknown";
       cardsByList[name] = (cardsByList[name] || 0) + 1;
     });
-  const labelCounts = countLabels(cards);
-  const memberCounts = countMembers(cards, memberMap);
+  const labelCounts = countLabels(activeCards);
+  const memberCounts = countMembers(activeCards, memberMap);
   const dueCounts = countDueDates(activeCards, now, weekCutoff);
 
   drawBar("cardsByList", cardsByList, name => LIST_COLORS[name] || "#73BDFF");
@@ -447,7 +451,7 @@ async function loadWeather(force = false) {
     const url = new URL("https://api.open-meteo.com/v1/forecast");
     url.searchParams.set("latitude", CONFIG.WEATHER_LAT);
     url.searchParams.set("longitude", CONFIG.WEATHER_LON);
-    url.searchParams.set("current", "temperature_2m,weather_code,precipitation,wind_speed_10m");
+    url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,precipitation,wind_speed_10m");
     url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max");
     url.searchParams.set("temperature_unit", "fahrenheit");
     url.searchParams.set("wind_speed_unit", "mph");
@@ -457,7 +461,11 @@ async function loadWeather(force = false) {
     const data = await getJson(url.toString());
     $("weatherLocation").textContent = CONFIG.WEATHER_LABEL;
     $("weatherTemp").textContent = `${Math.round(data.current.temperature_2m)}°F`;
-    $("weatherDesc").textContent = weatherCodeText(data.current.weather_code);
+    const apparentTemperature = Number(data.current.apparent_temperature);
+    const feelsLikeText = Number.isFinite(apparentTemperature)
+      ? ` · Feels like ${Math.round(apparentTemperature)}°F`
+      : "";
+    $("weatherDesc").textContent = `${weatherCodeText(data.current.weather_code)}${feelsLikeText}`;
     $("weatherIcon").textContent = weatherIcon(data.current.weather_code);
     $("weatherHighLow").textContent = `${Math.round(data.daily.temperature_2m_max[0])}° / ${Math.round(data.daily.temperature_2m_min[0])}°`;
     $("weatherRain").textContent = `${data.daily.precipitation_probability_max[0] ?? 0}%`;
@@ -554,6 +562,22 @@ async function loadDashboard(forceWeather = false) {
   }
 }
 
+async function refreshWeatherWithAnimation() {
+  const icon = $("weatherIcon");
+  icon.classList.remove("weather-refreshed");
+  icon.classList.add("weather-refreshing");
+
+  try {
+    await loadWeather(true);
+  } finally {
+    icon.classList.remove("weather-refreshing");
+    // Restart the completion animation even when refresh is clicked repeatedly.
+    void icon.offsetWidth;
+    icon.classList.add("weather-refreshed");
+    setTimeout(() => icon.classList.remove("weather-refreshed"), 650);
+  }
+}
+
 function updateRefreshTimes() {
   const now = new Date();
   const next = new Date(now.getTime() + CONFIG.REFRESH_INTERVAL_MINUTES * 60 * 1000);
@@ -563,7 +587,7 @@ function updateRefreshTimes() {
 }
 
 $("refreshNow").addEventListener("click", () => loadDashboard(true));
-$("refreshWeather").addEventListener("click", () => loadWeather(true));
+$("refreshWeather").addEventListener("click", refreshWeatherWithAnimation);
 $("refreshMinutes").textContent = CONFIG.REFRESH_INTERVAL_MINUTES;
 
 loadDashboard(true);
