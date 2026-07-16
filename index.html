@@ -107,10 +107,51 @@
             <div class="chart-box"><canvas id="cardsByMember"></canvas></div>
           </article>
 
-          <article class="panel panel-due">
-            <h2>Cards by Due Date</h2>
-            <div class="chart-box"><canvas id="cardsByDueDate"></canvas></div>
-          </article>
+          <div class="panel-right-stack">
+            <article class="panel panel-due">
+              <h2>Cards by Due Date</h2>
+              <div class="chart-box"><canvas id="cardsByDueDate"></canvas></div>
+            </article>
+
+            <article class="panel panel-air-quality">
+              <div class="panel-header">
+                <h2>Air Quality</h2>
+                <div class="aq-info-trigger" tabindex="0" aria-label="Show AQI categories and ranges">
+                  i
+                  <div class="aq-tooltip" role="tooltip">
+                    <strong>AQI categories</strong>
+                    <ul class="tooltip-list">
+                      <li><span class="tooltip-swatch aq-badge-good"></span>Good 0-50</li>
+                      <li><span class="tooltip-swatch aq-badge-moderate"></span>Moderate 51-100</li>
+                      <li><span class="tooltip-swatch aq-badge-unhealthy"></span>Unhealthy 101-150</li>
+                      <li><span class="tooltip-swatch aq-badge-very-unhealthy"></span>Very Unhealthy 151-200</li>
+                      <li><span class="tooltip-swatch aq-badge-hazardous"></span>Hazardous 201+</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="aq-summary">
+                <div class="aq-circles">
+                  <div class="aq-circle-group">
+                    <span class="aq-circle-heading">Now</span>
+                    <div id="aqNowCircle" class="aq-circle aq-badge-neutral">
+                      <strong id="aqNowValue">—</strong>
+                      <span id="aqNowCategory" class="aq-circle-category">—</span>
+                      <p id="aqNowDetails">Hourly forecast not loaded.</p>
+                    </div>
+                  </div>
+                  <div class="aq-circle-group">
+                    <span class="aq-circle-heading">Tomorrow</span>
+                    <div id="aqTomorrowCircle" class="aq-circle aq-badge-neutral">
+                      <strong id="aqTomorrowValue">—</strong>
+                      <span id="aqTomorrowCategory" class="aq-circle-category">—</span>
+                      <p id="aqTomorrowDetails">Tomorrow forecast not loaded.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
         </section>
       </section>
 
@@ -138,6 +179,8 @@
           <h2>3-Day Forecast</h2>
           <div id="forecastList" class="forecast-list"></div>
         </section>
+
+        <div id="mobileAirQualitySlot"></div>
       </aside>
     </section>
 

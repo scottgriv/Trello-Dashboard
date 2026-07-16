@@ -15,6 +15,7 @@
 const state = {
   charts: {},
   lastWeatherFetch: 0,
+  lastAirQualityFetch: 0,
   lastData: null,
 };
 
@@ -478,6 +479,104 @@ async function loadWeather(force = false) {
     $("forecastList").innerHTML = `<div class="forecast-day"><div class="icon">⚠️</div><div><strong>Forecast unavailable</strong><p>Check internet connection.</p></div></div>`;
     console.error(err);
   }
+
+  try {
+    await loadAirQuality(force);
+  } catch (err) {
+    $("aqNowValue").textContent = "—";
+    $("aqNowCategory").textContent = "Unavailable";
+    $("aqNowCategory").className = "aq-badge aq-badge-neutral";
+    $("aqNowDetails").textContent = "Air quality data unavailable.";
+    $("aqTomorrowValue").textContent = "—";
+    $("aqTomorrowCategory").textContent = "Unavailable";
+    $("aqTomorrowCategory").className = "aq-badge aq-badge-neutral";
+    $("aqTomorrowDetails").textContent = "Air quality forecast unavailable.";
+    console.error(err);
+  }
+}
+
+function getAqiCategory(aqi) {
+  if (typeof aqi !== "number" || Number.isNaN(aqi)) {
+    return { label: "Unavailable", className: "aq-badge-neutral" };
+  }
+
+  if (aqi <= 50) return { label: "Good", className: "aq-badge-good" };
+  if (aqi <= 100) return { label: "Moderate", className: "aq-badge-moderate" };
+  if (aqi <= 150) return { label: "Unhealthy", className: "aq-badge-unhealthy" };
+  if (aqi <= 200) return { label: "Very Unhealthy", className: "aq-badge-very-unhealthy" };
+  return { label: "Hazardous", className: "aq-badge-hazardous" };
+}
+
+function nearestHourIndex(times) {
+  const now = new Date();
+  const currentHour = now.toISOString().slice(0, 13);
+  const index = times.findIndex(time => time.slice(0, 13) === currentHour);
+  return index >= 0 ? index : 0;
+}
+
+function renderAirQuality(data) {
+  if (!data?.hourly?.time || !data?.hourly?.us_aqi) {
+    throw new Error("Invalid air quality response");
+  }
+
+  const times = data.hourly.time;
+  const aqi = data.hourly.us_aqi;
+  const pm25 = data.hourly.pm2_5 || [];
+  const nowIndex = nearestHourIndex(times);
+  const nowAqi = aqi[nowIndex];
+  const nowPm25 = pm25[nowIndex];
+  const nowCategory = getAqiCategory(nowAqi);
+
+  $("aqNowValue").textContent = typeof nowAqi === "number" ? `${Math.round(nowAqi)}` : "—";
+  $("aqNowCategory").textContent = nowCategory.label;
+  $("aqNowCircle").className = `aq-circle ${nowCategory.className}`;
+  $("aqNowDetails").textContent = typeof nowPm25 === "number"
+    ? `PM2.5 ${Math.round(nowPm25)} μg/m³` : "Hourly PM2.5 unavailable.";
+
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowEntries = times.reduce((acc, timeString, index) => {
+    const date = new Date(timeString);
+    if (sameDay(date, tomorrowDate) && typeof aqi[index] === "number") {
+      acc.push({ aqi: aqi[index], pm25: pm25[index] });
+    }
+    return acc;
+  }, []);
+
+  if (tomorrowEntries.length) {
+    const avgAqi = Math.round(tomorrowEntries.reduce((sum, item) => sum + item.aqi, 0) / tomorrowEntries.length);
+    const avgPm25 = tomorrowEntries.every(item => typeof item.pm25 === "number")
+      ? Math.round(tomorrowEntries.reduce((sum, item) => sum + item.pm25, 0) / tomorrowEntries.length)
+      : null;
+    const tomorrowCategory = getAqiCategory(avgAqi);
+
+    $("aqTomorrowValue").textContent = `${avgAqi}`;
+    $("aqTomorrowCategory").textContent = tomorrowCategory.label;
+    $("aqTomorrowCircle").className = `aq-circle ${tomorrowCategory.className}`;
+    $("aqTomorrowDetails").textContent = avgPm25 !== null
+      ? `PM2.5 ${avgPm25} μg/m³` : `Tomorrow AQI ${avgAqi}`;
+  } else {
+    $("aqTomorrowValue").textContent = "—";
+    $("aqTomorrowCategory").textContent = "Unavailable";
+    $("aqTomorrowCategory").className = "aq-badge aq-badge-neutral";
+    $("aqTomorrowDetails").textContent = "No tomorrow forecast available.";
+  }
+}
+
+async function loadAirQuality(force = false) {
+  const now = Date.now();
+  if (!force && now - state.lastAirQualityFetch < CONFIG.WEATHER_REFRESH_MINUTES * 60 * 1000) return;
+  state.lastAirQualityFetch = now;
+
+  const url = new URL("https://air-quality-api.open-meteo.com/v1/air-quality");
+  url.searchParams.set("latitude", CONFIG.WEATHER_LAT);
+  url.searchParams.set("longitude", CONFIG.WEATHER_LON);
+  url.searchParams.set("hourly", "us_aqi,pm2_5");
+  url.searchParams.set("timezone", "auto");
+  url.searchParams.set("forecast_days", "2");
+
+  const data = await getJson(url.toString());
+  renderAirQuality(data);
 }
 
 function renderForecast(daily) {
@@ -592,3 +691,23 @@ $("refreshMinutes").textContent = CONFIG.REFRESH_INTERVAL_MINUTES;
 
 loadDashboard(true);
 setInterval(() => loadDashboard(false), CONFIG.REFRESH_INTERVAL_MINUTES * 60 * 1000);
+
+function moveAirQualityForMobile() {
+  const airQualityPanel = document.querySelector('.panel-air-quality');
+  const mobileSlot = $('mobileAirQualitySlot');
+  if (!airQualityPanel || !mobileSlot) return;
+
+  if (window.innerWidth <= 900) {
+    if (!mobileSlot.contains(airQualityPanel)) {
+      mobileSlot.appendChild(airQualityPanel);
+    }
+  } else {
+    const rightStack = document.querySelector('.panel-right-stack');
+    if (rightStack && !rightStack.contains(airQualityPanel)) {
+      rightStack.appendChild(airQualityPanel);
+    }
+  }
+}
+
+window.addEventListener('resize', moveAirQualityForMobile);
+moveAirQualityForMobile();

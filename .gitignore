@@ -58,3 +58,4 @@ Icon?
 setup/config.js
 setup/colors.js
 dashboard.log
+deploy.command

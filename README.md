@@ -51,7 +51,7 @@ Transform your Trello board into a self-hosted Mission Control dashboard with re
 
 - Real-time Trello board analytics and insights
 - Interactive charts and visualizations
-- Weather information for your location
+- Weather and Air Quality information for your location
     - Powered by Open-Meteo API
 - Responsive design for desktop, tablet, and mobile
 - Easy configuration (boards and colors) through `config.js` and `colors.js`
