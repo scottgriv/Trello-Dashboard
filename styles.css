@@ -280,8 +280,11 @@ button:hover { background: rgba(255, 255, 255, .11); }
 
 .panel-air-quality {
   display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  align-items: stretch;
   gap: 14px;
-  min-height: auto;
+  min-height: 215px;
   padding-bottom: 8px;
   overflow: visible;
 }
@@ -289,12 +292,22 @@ button:hover { background: rgba(255, 255, 255, .11); }
 .panel-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
 .panel-header h2 {
   margin: 0;
+}
+
+.aq-summary {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 6px 10px;
+  min-height: 100%;
 }
 
 .aq-info-trigger {
@@ -321,14 +334,14 @@ button:hover { background: rgba(255, 255, 255, .11); }
   position: absolute;
   top: 110%;
   right: 0;
-  width: 230px;
-  padding: 12px 12px 10px;
+  width: 220px;
+  padding: 10px 10px 8px;
   border-radius: 14px;
   background: rgba(10, 16, 22, .96);
   border: 1px solid rgba(255, 255, 255, .1);
   color: #e8f1fc;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.4;
   box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
   opacity: 0;
   pointer-events: none;
@@ -338,7 +351,7 @@ button:hover { background: rgba(255, 255, 255, .11); }
 }
 
 .aq-info-trigger:hover .aq-tooltip,
-.aq-info-trigger:focus-within .aq-tooltip {
+.aq-info-trigger.is-tooltip-open .aq-tooltip {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -366,7 +379,10 @@ button:hover { background: rgba(255, 255, 255, .11); }
 }
 
 .aq-summary {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 12px;
   padding: 2px 6px 10px;
 }
@@ -425,7 +441,11 @@ button:hover { background: rgba(255, 255, 255, .11); }
   text-transform: uppercase;
   font-weight: 700;
   color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 
 .aq-circle strong {
   font-size: 28px;
@@ -443,9 +463,10 @@ button:hover { background: rgba(255, 255, 255, .11); }
 .aq-badge-neutral { background: #64748b; color: #ffffff; }
 .aq-badge-good { background: #16a34a; color: #ffffff; }
 .aq-badge-moderate { background: #eab308; color: #0f172a; }
-.aq-badge-unhealthy { background: #f97316; color: #0f172a; }
+.aq-badge-unhealthy-sensitive { background: #f97316; color: #0f172a; }
+.aq-badge-unhealthy { background: #dc2626; color: #ffffff; }
 .aq-badge-very-unhealthy { background: #8b5cf6; color: #f8fafc; }
-.aq-badge-hazardous { background: #ef4444; color: #f8fafc; }
+.aq-badge-hazardous { background: #7f1d1d; color: #ffffff; }
 
 .aq-reference {
   color: var(--muted);
@@ -861,7 +882,65 @@ footer a:hover { text-decoration: underline; }
 
 @media (max-width: 1200px) {
   .main-grid { grid-template-columns: 1fr; }
-  .weather-column { grid-template-columns: 1fr 1fr; }
+  .charts-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+  .panel-right-stack {
+    grid-template-columns: 1fr;
+  }
+  .weather-column {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .main-grid {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .content {
+    display: block !important;
+  }
+
+  .charts-grid {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .panel-right-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .weather-column {
+    grid-template-columns: 1fr 1fr;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .panel,
+  .weather-now,
+  .forecast-panel {
+    overflow: visible;
+  }
+
+  .chart-box,
+  .panel-list .chart-box,
+  .panel-members .chart-box,
+  .panel-due .chart-box {
+    height: auto;
+    min-height: 170px;
+  }
+
+  .below-fold {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
 }
 
 @media (max-width: 900px) {

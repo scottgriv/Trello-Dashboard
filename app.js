@@ -15,7 +15,8 @@
 const state = {
   charts: {},
   lastWeatherFetch: 0,
-  lastAirQualityFetch: 0,
+  lastAirQualityNowFetch: 0,
+  lastAirQualityForecastFetch: 0,
   lastData: null,
 };
 
@@ -61,6 +62,23 @@ function isCompleteListName(name) {
 function shouldHideListFromChart(name) {
   const normalized = String(name || "").trim().toLowerCase();
   return CONFIG.HIDE_LISTS_STARTING_WITH.some(prefix => normalized.startsWith(prefix));
+}
+
+function isAirQualityConfigured() {
+  return Boolean(CONFIG.AIRNOW_API_KEY && !CONFIG.AIRNOW_API_KEY.startsWith("YOUR_"));
+}
+
+function formatAirNowDetails(entry) {
+  if (!entry || entry.AQI == null) return "Air quality data unavailable.";
+  const parameter = String(entry.ParameterName || "").toUpperCase();
+  const concentration = entry.Concentration;
+  if (parameter === "PM2.5" && typeof concentration === "number") {
+    return `PM2.5 ${Math.round(concentration)} μg/m³`;
+  }
+  if (parameter === "O3" && typeof concentration === "number") {
+    return `O₃ ${concentration.toFixed(2)} ppm`;
+  }
+  return `${parameter || "Pollutant"} AQI ${Math.round(entry.AQI)}`;
 }
 
 function renderKpiList(cards, listMap) {
@@ -483,100 +501,140 @@ async function loadWeather(force = false) {
   try {
     await loadAirQuality(force);
   } catch (err) {
+    const message = err && err.message ? err.message : "Air quality data unavailable.";
     $("aqNowValue").textContent = "—";
     $("aqNowCategory").textContent = "Unavailable";
     $("aqNowCategory").className = "aq-badge aq-badge-neutral";
-    $("aqNowDetails").textContent = "Air quality data unavailable.";
+    $("aqNowDetails").textContent = message;
     $("aqTomorrowValue").textContent = "—";
     $("aqTomorrowCategory").textContent = "Unavailable";
     $("aqTomorrowCategory").className = "aq-badge aq-badge-neutral";
-    $("aqTomorrowDetails").textContent = "Air quality forecast unavailable.";
+    $("aqTomorrowDetails").textContent = message;
     console.error(err);
   }
 }
 
 function getAqiCategory(aqi) {
   if (typeof aqi !== "number" || Number.isNaN(aqi)) {
-    return { label: "Unavailable", className: "aq-badge-neutral" };
+    return { label: "Unavailable", shortLabel: "Unavailable", className: "aq-badge-neutral" };
   }
 
-  if (aqi <= 50) return { label: "Good", className: "aq-badge-good" };
-  if (aqi <= 100) return { label: "Moderate", className: "aq-badge-moderate" };
-  if (aqi <= 150) return { label: "Unhealthy", className: "aq-badge-unhealthy" };
-  if (aqi <= 200) return { label: "Very Unhealthy", className: "aq-badge-very-unhealthy" };
-  return { label: "Hazardous", className: "aq-badge-hazardous" };
-}
-
-function nearestHourIndex(times) {
-  const now = new Date();
-  const currentHour = now.toISOString().slice(0, 13);
-  const index = times.findIndex(time => time.slice(0, 13) === currentHour);
-  return index >= 0 ? index : 0;
-}
-
-function renderAirQuality(data) {
-  if (!data?.hourly?.time || !data?.hourly?.us_aqi) {
-    throw new Error("Invalid air quality response");
-  }
-
-  const times = data.hourly.time;
-  const aqi = data.hourly.us_aqi;
-  const pm25 = data.hourly.pm2_5 || [];
-  const nowIndex = nearestHourIndex(times);
-  const nowAqi = aqi[nowIndex];
-  const nowPm25 = pm25[nowIndex];
-  const nowCategory = getAqiCategory(nowAqi);
-
-  $("aqNowValue").textContent = typeof nowAqi === "number" ? `${Math.round(nowAqi)}` : "—";
-  $("aqNowCategory").textContent = nowCategory.label;
-  $("aqNowCircle").className = `aq-circle ${nowCategory.className}`;
-  $("aqNowDetails").textContent = typeof nowPm25 === "number"
-    ? `PM2.5 ${Math.round(nowPm25)} μg/m³` : "Hourly PM2.5 unavailable.";
-
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrowEntries = times.reduce((acc, timeString, index) => {
-    const date = new Date(timeString);
-    if (sameDay(date, tomorrowDate) && typeof aqi[index] === "number") {
-      acc.push({ aqi: aqi[index], pm25: pm25[index] });
-    }
-    return acc;
-  }, []);
-
-  if (tomorrowEntries.length) {
-    const avgAqi = Math.round(tomorrowEntries.reduce((sum, item) => sum + item.aqi, 0) / tomorrowEntries.length);
-    const avgPm25 = tomorrowEntries.every(item => typeof item.pm25 === "number")
-      ? Math.round(tomorrowEntries.reduce((sum, item) => sum + item.pm25, 0) / tomorrowEntries.length)
-      : null;
-    const tomorrowCategory = getAqiCategory(avgAqi);
-
-    $("aqTomorrowValue").textContent = `${avgAqi}`;
-    $("aqTomorrowCategory").textContent = tomorrowCategory.label;
-    $("aqTomorrowCircle").className = `aq-circle ${tomorrowCategory.className}`;
-    $("aqTomorrowDetails").textContent = avgPm25 !== null
-      ? `PM2.5 ${avgPm25} μg/m³` : `Tomorrow AQI ${avgAqi}`;
-  } else {
-    $("aqTomorrowValue").textContent = "—";
-    $("aqTomorrowCategory").textContent = "Unavailable";
-    $("aqTomorrowCategory").className = "aq-badge aq-badge-neutral";
-    $("aqTomorrowDetails").textContent = "No tomorrow forecast available.";
-  }
+  if (aqi <= 50) return { label: "Good", shortLabel: "Good", className: "aq-badge-good" };
+  if (aqi <= 100) return { label: "Moderate", shortLabel: "Moderate", className: "aq-badge-moderate" };
+  if (aqi <= 150) return {
+    label: "Unhealthy for Sensitive Groups",
+    shortLabel: "Sensitive",
+    className: "aq-badge-unhealthy-sensitive"
+  };
+  if (aqi <= 200) return { label: "Unhealthy", shortLabel: "Unhealthy", className: "aq-badge-unhealthy" };
+  if (aqi <= 300) return {
+    label: "Very Unhealthy",
+    shortLabel: "Very Unhealthy",
+    className: "aq-badge-very-unhealthy"
+  };
+  return { label: "Hazardous", shortLabel: "Hazardous", className: "aq-badge-hazardous" };
 }
 
 async function loadAirQuality(force = false) {
+  if (!isAirQualityConfigured()) {
+    throw new Error("Missing AirNow API key in setup/config.js");
+  }
+
   const now = Date.now();
-  if (!force && now - state.lastAirQualityFetch < CONFIG.WEATHER_REFRESH_MINUTES * 60 * 1000) return;
-  state.lastAirQualityFetch = now;
+  const nowRefreshMs = (CONFIG.AIR_QUALITY_REFRESH_MINUTES ?? 30) * 60 * 1000;
+  const forecastRefreshMs = (CONFIG.AIR_QUALITY_FORECAST_REFRESH_MINUTES ?? 360) * 60 * 1000;
+  const tasks = [];
 
-  const url = new URL("https://air-quality-api.open-meteo.com/v1/air-quality");
-  url.searchParams.set("latitude", CONFIG.WEATHER_LAT);
-  url.searchParams.set("longitude", CONFIG.WEATHER_LON);
-  url.searchParams.set("hourly", "us_aqi,pm2_5");
-  url.searchParams.set("timezone", "auto");
-  url.searchParams.set("forecast_days", "2");
+  if (force || now - state.lastAirQualityNowFetch >= nowRefreshMs) {
+    tasks.push(loadAirQualityNow(now));
+  }
 
-  const data = await getJson(url.toString());
-  renderAirQuality(data);
+  if (force || now - state.lastAirQualityForecastFetch >= forecastRefreshMs) {
+    tasks.push(loadAirQualityForecast(now));
+  }
+
+  if (!tasks.length) return;
+
+  const results = await Promise.allSettled(tasks);
+  const failures = results.filter(result => result.status === "rejected");
+  if (failures.length === results.length) {
+    throw failures[0].reason;
+  }
+}
+
+async function fetchAirNowData(path, params, distances = [25, 50, 100]) {
+  for (const distance of distances) {
+    const url = new URL(`https://www.airnowapi.org${path}`);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+    url.searchParams.set("distance", String(distance));
+    url.searchParams.set("API_KEY", CONFIG.AIRNOW_API_KEY);
+
+    const data = await getJson(url.toString());
+    if (Array.isArray(data) && data.length) {
+      return data;
+    }
+  }
+  return [];
+}
+
+async function loadAirQualityNow(now) {
+  const params = {
+    format: "application/json",
+    latitude: CONFIG.WEATHER_LAT,
+    longitude: CONFIG.WEATHER_LON,
+  };
+  const data = await fetchAirNowData("/aq/observation/latLong/current/", params);
+  if (!data.length) {
+    throw new Error("No nearby AirNow monitors found for current air quality.");
+  }
+
+  const best = data.reduce((winner, item) => {
+    if (!winner || Number(item.AQI) > Number(winner.AQI)) return item;
+    return winner;
+  }, null);
+
+  const aqi = Number(best.AQI);
+  const category = getAqiCategory(aqi);
+  $("aqNowValue").textContent = Number.isFinite(aqi) ? `${Math.round(aqi)}` : "—";
+  $("aqNowCategory").textContent = category.shortLabel;
+  $("aqNowCircle").className = `aq-circle ${category.className}`;
+  $("aqNowDetails").textContent = formatAirNowDetails(best);
+  state.lastAirQualityNowFetch = now;
+}
+
+async function loadAirQualityForecast(now) {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  const forecastDate = date.toISOString().slice(0, 10);
+
+  const params = {
+    format: "application/json",
+    latitude: CONFIG.WEATHER_LAT,
+    longitude: CONFIG.WEATHER_LON,
+    date: forecastDate,
+  };
+  const data = await fetchAirNowData("/aq/forecast/latLong/", params);
+  if (!data.length) {
+    throw new Error("No nearby AirNow forecast monitors found for tomorrow.");
+  }
+
+  const tomorrowEntries = data.filter(entry => String(entry.DateForecast || "").startsWith(forecastDate));
+  if (!tomorrowEntries.length) {
+    throw new Error("AirNow forecast data didn't include tomorrow's date.");
+  }
+
+  const best = tomorrowEntries.reduce((winner, item) => {
+    if (!winner || Number(item.AQI) > Number(winner.AQI)) return item;
+    return winner;
+  }, null);
+
+  const aqi = Number(best.AQI);
+  const category = getAqiCategory(aqi);
+  $("aqTomorrowValue").textContent = Number.isFinite(aqi) ? `${Math.round(aqi)}` : "—";
+  $("aqTomorrowCategory").textContent = category.shortLabel;
+  $("aqTomorrowCircle").className = `aq-circle ${category.className}`;
+  $("aqTomorrowDetails").textContent = formatAirNowDetails(best);
+  state.lastAirQualityForecastFetch = now;
 }
 
 function renderForecast(daily) {
@@ -709,5 +767,36 @@ function moveAirQualityForMobile() {
   }
 }
 
+function setupAirQualityTooltip() {
+  const trigger = document.querySelector('.aq-info-trigger');
+  if (!trigger) return;
+
+  const toggleTooltip = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const isOpen = trigger.classList.toggle('is-tooltip-open');
+    if (!isOpen) {
+      trigger.blur();
+    }
+  };
+
+  const closeTooltip = (event) => {
+    if (!event.target.closest('.aq-info-trigger')) {
+      trigger.classList.remove('is-tooltip-open');
+      trigger.blur();
+    }
+  };
+
+  trigger.addEventListener('click', toggleTooltip);
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      toggleTooltip(event);
+    }
+  });
+
+  document.addEventListener('click', closeTooltip);
+}
+
 window.addEventListener('resize', moveAirQualityForMobile);
 moveAirQualityForMobile();
+setupAirQualityTooltip();

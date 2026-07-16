@@ -38,10 +38,11 @@ Transform your Trello board into a self-hosted Mission Control dashboard with re
 - [Features](#features)
 - [Background Story](#background-story)
 - [Getting Started](#getting-started)
-- [Getting Your Trello API Credentials](#getting-your-trello-api-credentials)
+- [Getting Your API Credentials](#getting-your-api-credentials)
     - [1. Create a Trello API Key](#1-create-a-trello-api-key)
     - [2. Generate a Trello Token](#2-generate-a-trello-token)
     - [3. Get Your Board ID](#3-get-your-board-id)
+    - [4. Create a AirNow API Key (Optional for AQI Data)](#4-create-a-airnow-api-key-optional-for-aqi-data)
 - [Security](#security)
 - [Resources](#resources)
 - [License](#license)
@@ -51,8 +52,10 @@ Transform your Trello board into a self-hosted Mission Control dashboard with re
 
 - Real-time Trello board analytics and insights
 - Interactive charts and visualizations
-- Weather and Air Quality information for your location
+- Weather information for your location
     - Powered by Open-Meteo API
+- Air Quality Index (AQI) data for your location
+    - Powered by AirNow API
 - Responsive design for desktop, tablet, and mobile
 - Easy configuration (boards and colors) through `config.js` and `colors.js`
 - Self-hosted solution for privacy and control
@@ -72,18 +75,19 @@ I've included two configuration files (`config.js` and `colors.js`) located in t
 
 1. Create a Trello account and set up your board with lists, cards, and labels.
 2. Get your Trello API information (see below for instructions).
-1. Open these two example files in a text editor:
+3. Get your AirNow API key (optional for AQI data, see below for instructions).
+4. Open these two example files in a text editor:
     `setup/config_example.js`
     `setup/colors_example.js`
-2. Rename them to:
+5. Rename them to:
     `config.js`
     `colors.js`
-3. Update the values in `config.js` with your Trello board, refresh, and weather settings.
-4. Update `colors.js` to match your Trello labels and lists.
-5. Upload the full project folder to a local web server, NAS, or static hosting service.
-6. Open the dashboard in your browser.
+6. Update the values in `config.js` with your Trello board, refresh, air quality, and weather settings.
+7. Update `colors.js` to match your Trello labels and lists.
+8. Upload the full project folder to a local web server, NAS, or static hosting service.
+9. Open the dashboard in your browser.
 
-## Getting Your Trello API Credentials
+## Getting Your API Credentials
 
 The dashboard requires three values:
 
@@ -159,6 +163,16 @@ Copy it into your configuration:
 BOARD_ID: "AbCdEf12"
 ```
 
+### 4. Create a AirNow API Key (Optional for AQI Data)
+
+- Visit: https://www.airnowapi.org/
+- Sign up for an account and generate an API key. 
+    - This key will allow you to fetch Air Quality Index (AQI) data for your location (top right hand corner of the Web Services tab). Copy the API key and add it to your `config.js` file as follows:
+
+```js
+AIRNOW_API_KEY: "YOUR_AIRNOW_API_KEY"
+```
+
 ## Security
 
 ⚠️ **Never commit your personal `config.js` file to GitHub.**
@@ -177,6 +191,7 @@ Instead:
 - **Trello** – https://trello.com/
 - **Trello REST API** – https://developer.atlassian.com/cloud/trello/rest/
 - **Open-Meteo Weather API** – https://open-meteo.com/
+- **AirNow API** – https://www.airnowapi.org/
 - **Chart.js** – https://www.chartjs.org/
 - **HTML5** – https://developer.mozilla.org/docs/Web/HTML
 - **CSS3** – https://developer.mozilla.org/docs/Web/CSS

@@ -14,11 +14,16 @@ const CONFIG = {
   // Dashboard refresh rate. Change this one value to update the timer and footer text.
   REFRESH_INTERVAL_MINUTES: 15,
 
-  // Weather location - change these three values for another place.
+  // Weather location for Open Meteo - change these three values for another place.
   WEATHER_LAT: 39.9526,
   WEATHER_LON: -75.1652,
   WEATHER_LABEL: "Philadelphia, PA",
   WEATHER_REFRESH_MINUTES: 30,
+
+  // AirNow API key for current air quality and forecast data.
+  AIRNOW_API_KEY: "YOUR_AIRNOW_API_KEY",
+  AIR_QUALITY_REFRESH_MINUTES: 30,
+  AIR_QUALITY_FORECAST_REFRESH_MINUTES: 360,
 
   // Lists that are considered "complete" to be shown in the completed section of the dashboard. Case insensitive.
   COMPLETE_LIST_NAMES: ["complete", "completed", "done"],
