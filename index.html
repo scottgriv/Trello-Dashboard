@@ -21,7 +21,7 @@
       </div>
 
       <section class="refresh-card">
-        <button id="refreshNow" class="refresh-icon" type="button" title="Refresh dashboard" aria-label="Refresh dashboard">
+        <button id="refreshNow" class="refresh-icon" type="button" title="Refresh all dashboard, weather, and air quality data" aria-label="Refresh all data">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div>
@@ -34,6 +34,8 @@
         </div>
       </section>
     </header>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastMessage" class="toast-text">Dashboard ready.</span></div>
 
     <section id="setupWarning" class="setup-warning hidden">
       <strong>Setup needed:</strong> open <code>setup/config.js</code> and paste your Trello token. Your API key and board ID are already filled in.
@@ -160,7 +162,6 @@
         <section class="weather-now">
           <div class="weather-title">
             <span id="weatherLocation">Local Weather</span>
-            <button id="refreshWeather" class="refresh-icon weather-refresh-icon" type="button" title="Refresh weather" aria-label="Refresh weather"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
           <div class="weather-hero">
             <div id="weatherIcon" class="weather-icon">⛅</div>

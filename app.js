@@ -18,6 +18,7 @@ const state = {
   lastAirQualityNowFetch: 0,
   lastAirQualityForecastFetch: 0,
   lastData: null,
+  toastTimer: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -39,6 +40,21 @@ function isConfigured() {
 
 function setStatus(text) {
   $("statusText").textContent = text;
+}
+
+function showToast(message, type = "success") {
+  const toast = $("toast");
+  const toastMessage = $("toastMessage");
+  if (!toast || !toastMessage) return;
+
+  toastMessage.textContent = message;
+  toast.classList.remove("success", "error", "visible");
+  toast.classList.add(type === "error" ? "error" : "success", "visible");
+
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(() => {
+    toast.classList.remove("visible");
+  }, 4000);
 }
 
 function formatTime(date) {
@@ -463,45 +479,66 @@ function escapeHtml(str) {
 
 async function loadWeather(force = false) {
   const now = Date.now();
-  if (!force && now - state.lastWeatherFetch < CONFIG.WEATHER_REFRESH_MINUTES * 60 * 1000) return;
-  state.lastWeatherFetch = now;
+  const weatherNeedsRefresh = force || now - state.lastWeatherFetch >= CONFIG.WEATHER_REFRESH_MINUTES * 60 * 1000;
+  const airQualityNeedsRefresh = force || now - state.lastAirQualityNowFetch >= (CONFIG.AIR_QUALITY_REFRESH_MINUTES ?? 30) * 60 * 1000 || now - state.lastAirQualityForecastFetch >= (CONFIG.AIR_QUALITY_FORECAST_REFRESH_MINUTES ?? 360) * 60 * 1000;
 
-  try {
-    const url = new URL("https://api.open-meteo.com/v1/forecast");
-    url.searchParams.set("latitude", CONFIG.WEATHER_LAT);
-    url.searchParams.set("longitude", CONFIG.WEATHER_LON);
-    url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,precipitation,wind_speed_10m");
-    url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max");
-    url.searchParams.set("temperature_unit", "fahrenheit");
-    url.searchParams.set("wind_speed_unit", "mph");
-    url.searchParams.set("timezone", "auto");
-    url.searchParams.set("forecast_days", "4");
+  if (!weatherNeedsRefresh && !airQualityNeedsRefresh) {
+    return {
+      weatherSuccess: true,
+      airQualitySuccess: true,
+      weatherError: null,
+      airQualityError: null,
+    };
+  }
 
-    const data = await getJson(url.toString());
-    $("weatherLocation").textContent = CONFIG.WEATHER_LABEL;
-    $("weatherTemp").textContent = `${Math.round(data.current.temperature_2m)}°F`;
-    const apparentTemperature = Number(data.current.apparent_temperature);
-    const feelsLikeText = Number.isFinite(apparentTemperature)
-      ? ` · Feels like ${Math.round(apparentTemperature)}°F`
-      : "";
-    $("weatherDesc").textContent = `${weatherCodeText(data.current.weather_code)}${feelsLikeText}`;
-    $("weatherIcon").textContent = weatherIcon(data.current.weather_code);
-    $("weatherHighLow").textContent = `${Math.round(data.daily.temperature_2m_max[0])}° / ${Math.round(data.daily.temperature_2m_min[0])}°`;
-    $("weatherRain").textContent = `${data.daily.precipitation_probability_max[0] ?? 0}%`;
-    $("weatherWind").textContent = `${Math.round(data.current.wind_speed_10m ?? 0)} mph`;
+  let weatherSuccess = false;
+  let airQualitySuccess = false;
+  let weatherError = null;
+  let airQualityError = null;
 
-    renderForecast(data.daily);
-  } catch (err) {
-    $("weatherTemp").textContent = "—";
-    $("weatherDesc").textContent = "Weather unavailable";
-    $("forecastList").innerHTML = `<div class="forecast-day"><div class="icon">⚠️</div><div><strong>Forecast unavailable</strong><p>Check internet connection.</p></div></div>`;
-    console.error(err);
+  if (weatherNeedsRefresh) {
+    try {
+      const url = new URL("https://api.open-meteo.com/v1/forecast");
+      url.searchParams.set("latitude", CONFIG.WEATHER_LAT);
+      url.searchParams.set("longitude", CONFIG.WEATHER_LON);
+      url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,precipitation,wind_speed_10m");
+      url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max");
+      url.searchParams.set("temperature_unit", "fahrenheit");
+      url.searchParams.set("wind_speed_unit", "mph");
+      url.searchParams.set("timezone", "auto");
+      url.searchParams.set("forecast_days", "4");
+
+      const data = await getJson(url.toString());
+      $("weatherLocation").textContent = CONFIG.WEATHER_LABEL;
+      $("weatherTemp").textContent = `${Math.round(data.current.temperature_2m)}°F`;
+      const apparentTemperature = Number(data.current.apparent_temperature);
+      const feelsLikeText = Number.isFinite(apparentTemperature)
+        ? ` · Feels like ${Math.round(apparentTemperature)}°F`
+        : "";
+      $("weatherDesc").textContent = `${weatherCodeText(data.current.weather_code)}${feelsLikeText}`;
+      $("weatherIcon").textContent = weatherIcon(data.current.weather_code);
+      $("weatherHighLow").textContent = `${Math.round(data.daily.temperature_2m_max[0])}° / ${Math.round(data.daily.temperature_2m_min[0])}°`;
+      $("weatherRain").textContent = `${data.daily.precipitation_probability_max[0] ?? 0}%`;
+      $("weatherWind").textContent = `${Math.round(data.current.wind_speed_10m ?? 0)} mph`;
+
+      renderForecast(data.daily);
+      weatherSuccess = true;
+      state.lastWeatherFetch = now;
+    } catch (err) {
+      weatherError = err instanceof Error ? err : new Error(String(err));
+      $("weatherTemp").textContent = "—";
+      $("weatherDesc").textContent = "Weather unavailable";
+      $("forecastList").innerHTML = `<div class="forecast-day"><div class="icon">⚠️</div><div><strong>Forecast unavailable</strong><p>Check internet connection.</p></div></div>`;
+      console.error(err);
+    }
   }
 
   try {
     await loadAirQuality(force);
+    airQualitySuccess = true;
   } catch (err) {
-    const message = err && err.message ? err.message : "Air quality data unavailable.";
+    airQualityError = err instanceof Error ? err : new Error(String(err));
+    const message = airQualityError.message || "Air quality data unavailable.";
     $("aqNowValue").textContent = "—";
     $("aqNowCategory").textContent = "Unavailable";
     $("aqNowCategory").className = "aq-badge aq-badge-neutral";
@@ -512,6 +549,13 @@ async function loadWeather(force = false) {
     $("aqTomorrowDetails").textContent = message;
     console.error(err);
   }
+
+  return {
+    weatherSuccess,
+    airQualitySuccess,
+    weatherError,
+    airQualityError,
+  };
 }
 
 function getAqiCategory(aqi) {
@@ -711,28 +755,92 @@ function weatherIcon(code) {
 }
 
 async function loadDashboard(forceWeather = false) {
-  try {
-    await Promise.all([loadTrello(), loadWeather(forceWeather)]);
-  } catch (err) {
-    console.error(err);
-    setStatus(`Error: ${err.message}. Check app.js values and the browser console.`);
+  const trelloResult = await Promise.allSettled([loadTrello(), loadWeather(forceWeather)]);
+  const trelloSettled = trelloResult[0];
+  const weatherSettled = trelloResult[1];
+
+  const trelloSuccess = trelloSettled.status === "fulfilled";
+  const trelloError = trelloSuccess ? null : (trelloSettled.reason instanceof Error ? trelloSettled.reason : new Error(String(trelloSettled.reason)));
+
+  let weatherSuccess = false;
+  let airQualitySuccess = false;
+  let weatherError = null;
+  let airQualityError = null;
+
+  if (weatherSettled.status === "fulfilled") {
+    weatherSuccess = Boolean(weatherSettled.value.weatherSuccess);
+    airQualitySuccess = Boolean(weatherSettled.value.airQualitySuccess);
+    weatherError = weatherSettled.value.weatherError;
+    airQualityError = weatherSettled.value.airQualityError;
+  } else {
+    const err = weatherSettled.reason instanceof Error ? weatherSettled.reason : new Error(String(weatherSettled.reason));
+    weatherError = err;
+    airQualityError = err;
   }
+
+  if (!trelloSuccess || !weatherSuccess || !airQualitySuccess) {
+    const errorParts = [];
+    if (!trelloSuccess) errorParts.push(`Trello: ${trelloError?.message || "Unknown error"}`);
+    if (!weatherSuccess) errorParts.push(`Weather: ${weatherError?.message || "Unknown error"}`);
+    if (!airQualitySuccess) errorParts.push(`AirNow: ${airQualityError?.message || "Unknown error"}`);
+    setStatus(`Refresh completed with issues. Check console for details.`);
+    return { trelloSuccess, weatherSuccess, airQualitySuccess, trelloError, weatherError, airQualityError, errorParts };
+  }
+
+  setStatus("Dashboard ready");
+  return { trelloSuccess, weatherSuccess, airQualitySuccess, trelloError, weatherError, airQualityError, errorParts: [] };
 }
 
-async function refreshWeatherWithAnimation() {
-  const icon = $("weatherIcon");
-  icon.classList.remove("weather-refreshed");
-  icon.classList.add("weather-refreshing");
+async function refreshAllDataWithAnimation() {
+  const weatherIcon = $("weatherIcon");
+  const aqNowCircle = $("aqNowCircle");
+  const aqTomorrowCircle = $("aqTomorrowCircle");
 
-  try {
-    await loadWeather(true);
-  } finally {
-    icon.classList.remove("weather-refreshing");
-    // Restart the completion animation even when refresh is clicked repeatedly.
-    void icon.offsetWidth;
-    icon.classList.add("weather-refreshed");
-    setTimeout(() => icon.classList.remove("weather-refreshed"), 650);
+  const enableRefreshAnimation = (el, refreshClass) => {
+    if (!el) return;
+    el.classList.remove("refreshing", "refreshed", "weather-refreshing", "weather-refreshed");
+    el.classList.add(refreshClass);
+  };
+
+  enableRefreshAnimation(weatherIcon, "weather-refreshing");
+  enableRefreshAnimation(aqNowCircle, "refreshing");
+  enableRefreshAnimation(aqTomorrowCircle, "refreshing");
+
+  const result = await loadDashboard(true);
+
+  if (!result || !result.trelloSuccess || !result.weatherSuccess || !result.airQualitySuccess) {
+    const messages = [];
+    if (!result || !result.trelloSuccess) {
+      const message = result?.trelloError?.message || "Trello refresh failed.";
+      messages.push(`Trello failed: ${message}`);
+    }
+    if (!result || !result.weatherSuccess) {
+      const message = result?.weatherError?.message || "Weather refresh failed.";
+      messages.push(`Weather failed: ${message}`);
+    }
+    if (!result || !result.airQualitySuccess) {
+      const message = result?.airQualityError?.message || "AirNow refresh failed.";
+      messages.push(`AirNow failed: ${message}`);
+    }
+    showToast(messages.join(" • "), "error");
+  } else {
+    showToast("Refresh complete: Trello, Weather, and AirNow all updated.");
   }
+
+  if (weatherIcon) {
+    weatherIcon.classList.remove("weather-refreshing");
+    void weatherIcon.offsetWidth;
+    weatherIcon.classList.add("weather-refreshed");
+    setTimeout(() => weatherIcon.classList.remove("weather-refreshed"), 650);
+  }
+
+  [aqNowCircle, aqTomorrowCircle].forEach(circle => {
+    if (!circle) return;
+    circle.classList.remove("refreshing");
+    void circle.offsetWidth;
+    circle.classList.add("refreshed");
+    setTimeout(() => circle.classList.remove("refreshed"), 650);
+  });
 }
 
 function updateRefreshTimes() {
@@ -743,8 +851,7 @@ function updateRefreshTimes() {
   if (nextRefreshEl) nextRefreshEl.textContent = formatTime(next);
 }
 
-$("refreshNow").addEventListener("click", () => loadDashboard(true));
-$("refreshWeather").addEventListener("click", refreshWeatherWithAnimation);
+$("refreshNow").addEventListener("click", () => refreshAllDataWithAnimation());
 $("refreshMinutes").textContent = CONFIG.REFRESH_INTERVAL_MINUTES;
 
 loadDashboard(true);
