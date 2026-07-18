@@ -541,11 +541,11 @@ async function loadWeather(force = false) {
     const message = airQualityError.message || "Air quality data unavailable.";
     $("aqNowValue").textContent = "—";
     $("aqNowCategory").textContent = "Unavailable";
-    $("aqNowCategory").className = "aq-badge aq-badge-neutral";
+    $("aqNowCategory").className = "aq-circle-category aq-badge aq-badge-neutral";
     $("aqNowDetails").textContent = message;
     $("aqTomorrowValue").textContent = "—";
     $("aqTomorrowCategory").textContent = "Unavailable";
-    $("aqTomorrowCategory").className = "aq-badge aq-badge-neutral";
+    $("aqTomorrowCategory").className = "aq-circle-category aq-badge aq-badge-neutral";
     $("aqTomorrowDetails").textContent = message;
     console.error(err);
   }
@@ -641,6 +641,7 @@ async function loadAirQualityNow(now) {
   const category = getAqiCategory(aqi);
   $("aqNowValue").textContent = Number.isFinite(aqi) ? `${Math.round(aqi)}` : "—";
   $("aqNowCategory").textContent = category.shortLabel;
+  $("aqNowCategory").className = "aq-circle-category";
   $("aqNowCircle").className = `aq-circle ${category.className}`;
   $("aqNowDetails").textContent = formatAirNowDetails(best);
   state.lastAirQualityNowFetch = now;
@@ -676,6 +677,7 @@ async function loadAirQualityForecast(now) {
   const category = getAqiCategory(aqi);
   $("aqTomorrowValue").textContent = Number.isFinite(aqi) ? `${Math.round(aqi)}` : "—";
   $("aqTomorrowCategory").textContent = category.shortLabel;
+  $("aqTomorrowCategory").className = "aq-circle-category";
   $("aqTomorrowCircle").className = `aq-circle ${category.className}`;
   $("aqTomorrowDetails").textContent = formatAirNowDetails(best);
   state.lastAirQualityForecastFetch = now;
